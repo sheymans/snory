@@ -1,0 +1,4 @@
+header = "head.html"
+footer = "feet.html"
+needed_js = ["markdeep.js"]
+title = "I Woke Up this Morning"
