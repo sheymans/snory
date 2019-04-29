@@ -41,7 +41,7 @@ print "writing header text to $index_file\n";
 write_file($index_file, "$header_text\n");
 
 print "writing title to $index_file\n";
-append_file($index_file, "**$title**\n");
+append_file($index_file, "**$title**\n\n");
 
 foreach my $js (@{$javascripts}) {
     print "copying $js to site\n";
