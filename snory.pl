@@ -7,6 +7,7 @@ use File::Copy qw(copy);
 use Data::Dumper;
 use File::Find qw(find);
 use File::Basename qw(basename);
+use Image::ExifTool;
 
 # Read the TOML config file with metadata:
 my $config = read_file("config.toml");
@@ -21,6 +22,7 @@ my $header_file = $config_data->{header};
 my $footer_file = $config_data->{footer};
 my $title = $config_data->{title};
 my $javascripts = $config_data->{needed_js};
+my $css = $config_data->{needed_css};
 my $photo_dir = $config_data->{photos};
 my $photo_format = $config_data->{photo_format};
 
@@ -47,6 +49,8 @@ foreach my $js (@{$javascripts}) {
     print "copying $js to site\n";
     copy($js, "site");
 }
+
+copy($css, "site");
 
 my @photo_metas = &collect_photo_metas();
 
@@ -97,14 +101,27 @@ sub create_story {
     my $story_html_base = &story_base_html($title, $date, $location);
     my $photo_filename = &photo_filename($photo_meta);
 
-    &create_story_page($title, $date, $location, $description, $photo_filename, $story_html_base);
-
     my $photo_file = &photo_file($photo_meta);
+    my $exif_info = &exif($photo_file);
+
+    &create_story_page($title, $date, $location, $description, $photo_filename, $story_html_base, $exif_info);
+
     copy($photo_file, "site");
 
     &add_story_to_index($title, $date, $location, $story_html_base);
 
     print "Created $title, $date, $location story.\n";
+}
+
+# Read the EXIF info from the photo.
+sub exif {
+    my ($photo_filename) = @_;
+
+    # Get Exif information from image file
+    my $exifTool = new Image::ExifTool;
+    my $info = $exifTool->ImageInfo($photo_filename);
+
+    return $info;
 }
 
 # Read the TOML for a photo given a photo meta (a location where the TOML with the meta is).
@@ -128,7 +145,7 @@ sub read_config_photo {
 
 # Create the html story page.
 sub create_story_page {
-    my ($title, $date, $location, $description, $photo_filename, $story_html_base) = @_;
+    my ($title, $date, $location, $description, $photo_filename, $story_html_base, $exif_info) = @_;
 
     # File to write to:
     my $story_html = "site/$story_html_base";
@@ -137,7 +154,14 @@ sub create_story_page {
     append_file($story_html, "**$title**\n");
     append_file($story_html, "\t$date\n");
     append_file($story_html, "\t$location\n");
-    append_file($story_html, "![$description]($photo_filename)\n");
+    append_file($story_html, "\n![$description]($photo_filename)\n");
+
+    my $model = $$exif_info{'Model'};
+    my $aperture = $$exif_info{'Aperture'};
+    my $shutter_speed = $$exif_info{'ShutterSpeed'};
+    my $lens = $$exif_info{'Lens'};
+    append_file($story_html, "\n(\_$model, f$aperture, ${shutter_speed}s, lens: $lens\_)\n");
+
     append_file($story_html, "$footer_text\n");
 }
 

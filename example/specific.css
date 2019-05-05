@@ -1,0 +1,13 @@
+body {
+    max-width: 55vw;
+}
+
+.md div.title {
+    padding-top: 20px;
+    padding-bottom: 5px;
+}
+
+.md div.subtitle {
+    font-size: 15px;
+    padding-bottom: 5px;
+}

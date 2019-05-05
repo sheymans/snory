@@ -1,6 +1,7 @@
 header = "head.html"
 footer = "feet.html"
 needed_js = ["markdeep.js"]
+needed_css = "specific.css"
 title = "I Woke Up this Morning"
 photos = "./photos"
 photo_format = "jpg"
