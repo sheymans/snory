@@ -2,6 +2,10 @@ body {
     max-width: 55vw;
 }
 
+.md img {
+    max-height: 600px;
+}
+
 .md div.title {
     padding-top: 20px;
     padding-bottom: 5px;
