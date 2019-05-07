@@ -8,6 +8,7 @@ use Data::Dumper;
 use File::Find qw(find);
 use File::Basename qw(basename);
 use Image::ExifTool;
+use Try::Tiny;
 
 # Read the TOML config file with metadata:
 my $config = read_file("config.toml");
@@ -20,14 +21,29 @@ unless ($config_data) {
 # Reading the config
 my $header_file = $config_data->{header};
 my $footer_file = $config_data->{footer};
-my $title = $config_data->{title};
+my $title = $config_data->{title} || "No title";
 my $javascripts = $config_data->{needed_js};
 my $css = $config_data->{needed_css};
 my $photo_dir = $config_data->{photos};
-my $photo_format = $config_data->{photo_format};
+my $photo_format = $config_data->{photo_format} || "jpg";
 
-my $header_text = read_file($header_file);
-my $footer_text = read_file($footer_file);
+unless (defined $photo_dir) {
+    die "you need to specify a photos attribute with the directory to look for photos in config.toml";
+}
+
+my $header_text;
+my $footer_text;
+try {
+    $header_text = read_file($header_file);
+} catch {
+    print "no header file specified, continuing without one."
+};
+
+try {
+    $footer_text = read_file($footer_file);
+} catch {
+    print "no footer file specified, continuing without one."
+};
 
 # Create the "site" directory if it does not exist yet:
 if (-e "site") {
@@ -50,7 +66,9 @@ foreach my $js (@{$javascripts}) {
     copy($js, "site");
 }
 
-copy($css, "site");
+if (defined $css) {
+    copy($css, "site");
+}
 
 my @photo_metas = &collect_photo_metas();
 
@@ -160,7 +178,7 @@ sub create_story_page {
     my $aperture = $$exif_info{'Aperture'};
     my $shutter_speed = $$exif_info{'ShutterSpeed'};
     my $lens = $$exif_info{'Lens'};
-    append_file($story_html, "\n(\_$model, f$aperture, ${shutter_speed}s, lens: $lens\_)\n");
+    append_file($story_html, "\n<center>(\_$model, f$aperture, ${shutter_speed}s, lens: $lens\_)</center>\n");
 
     append_file($story_html, "$footer_text\n");
 }
