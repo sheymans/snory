@@ -9,6 +9,7 @@ use File::Find qw(find);
 use File::Basename qw(basename);
 use Image::ExifTool;
 use Try::Tiny;
+use Date::Parse qw(str2time);
 
 # Read the TOML config file with metadata:
 my $config = read_file("config.toml");
@@ -72,9 +73,11 @@ if (defined $css) {
 
 my @photo_metas = &collect_photo_metas();
 
+my @photo_config_datas = &get_config_photos(@photo_metas);
+
 print "Creating stories...\n";
-for my $photo_meta (@photo_metas) {
-    &create_story($photo_meta);
+for my $photo_config_data (@photo_config_datas) {
+    &create_story($photo_config_data);
 }
 
 print "writing footer to $index_file\n";
@@ -112,9 +115,13 @@ sub photo_filename {
 # Create a story for a photo meta: this will create a story page, copy the photo to the right site location and
 # add a link on the index page to this story page.
 sub create_story {
-    my ($photo_meta) = @_;
+    my ($config_photo_data) = @_;
 
-    my ($title, $date, $location, $description) = &read_config_photo($photo_meta);
+    my $title = $config_photo_data->{title};
+    my $date = $config_photo_data->{date};
+    my $location = $config_photo_data->{location};
+    my $description = $config_photo_data->{description};
+    my $photo_meta = $config_photo_data->{photo_meta};
 
     my $story_html_base = &story_base_html($title, $date, $location);
     my $photo_filename = &photo_filename($photo_meta);
@@ -142,8 +149,33 @@ sub exif {
     return $info;
 }
 
+# Get the photo data for a collection of photo metas (a photo meta is a location of the TOML with photo meta data)
+sub get_config_photos {
+    my @metas = @_;
+
+    my @config_photo_datas = ();
+
+    for my $photo_meta (@metas) {
+        my $config_photo_data = &get_config_photo($photo_meta);
+        push @config_photo_datas, $config_photo_data;
+    }
+
+    my @sorted = sort {
+        my $d1 = $a->{date};
+        my $d2 = $b->{date};
+
+        my $epoch1 = str2time($d1);
+        my $epoch2 = str2time($d2);
+
+        # Most recent date first.
+        $epoch2 cmp $epoch1;
+    } @config_photo_datas;
+
+    return @sorted;
+}
+
 # Read the TOML for a photo given a photo meta (a location where the TOML with the meta is).
-sub read_config_photo {
+sub get_config_photo {
     my $photo_meta = shift;
 
     my $config_photo = read_file($photo_meta);
@@ -153,12 +185,10 @@ sub read_config_photo {
         die "Error parsing toml for story $photo_meta: $err_photo";
     }
 
-    my $title = $config_photo_data->{title};
-    my $date = $config_photo_data->{date};
-    my $location = $config_photo_data->{location};
-    my $description = $config_photo_data->{description};
+    # Add the name of the meta to the meta data as well:
+    $config_photo_data->{photo_meta} = $photo_meta;
 
-    return ($title, $date, $location, $description);
+    return $config_photo_data;
 }
 
 # Create the html story page.
