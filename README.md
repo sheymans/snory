@@ -1,6 +1,9 @@
 # snory
 
-> Tell a story with snory. 
+Tell a photo story with snory. 
+
+![GitHub top language](https://img.shields.io/github/languages/top/sheymans/snory.svg)
+![GitHub](https://img.shields.io/github/license/sheymans/snory.svg)
 
 `snory` creates an offline website for your photos. It currently creates 
 one page per photo. Pages are in markdown format and the [example](./example) uses 
