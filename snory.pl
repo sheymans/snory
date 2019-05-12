@@ -4,9 +4,10 @@ use warnings;
 use TOML qw(from_toml);
 use File::Slurp qw(read_file write_file append_file);
 use File::Copy qw(copy);
+use File::Copy::Recursive qw(fcopy);
 use Data::Dumper;
 use File::Find qw(find);
-use File::Basename qw(basename);
+use File::Basename qw(basename dirname);
 use Image::ExifTool;
 use Try::Tiny;
 use Date::Parse qw(str2time);
@@ -123,15 +124,15 @@ sub create_story {
     my $description = $config_photo_data->{description};
     my $photo_meta = $config_photo_data->{photo_meta};
 
-    my $story_html_base = &story_base_html($title, $date, $location);
-    my $photo_filename = &photo_filename($photo_meta);
+    my $story_html_base = &story_base_html($title, $date, $location, $photo_meta);
 
     my $photo_file = &photo_file($photo_meta);
     my $exif_info = &exif($photo_file);
 
-    &create_story_page($title, $date, $location, $description, $photo_filename, $story_html_base, $exif_info);
+    &create_story_page($title, $date, $location, $description, $photo_file, $story_html_base, $exif_info);
 
-    copy($photo_file, "site");
+    my $destination_file = "site/$photo_file";
+    fcopy($photo_file, $destination_file);
 
     &add_story_to_index($title, $date, $location, $story_html_base);
 
@@ -193,7 +194,7 @@ sub get_config_photo {
 
 # Create the html story page.
 sub create_story_page {
-    my ($title, $date, $location, $description, $photo_filename, $story_html_base, $exif_info) = @_;
+    my ($title, $date, $location, $description, $photo_file, $story_html_base, $exif_info) = @_;
 
     # File to write to:
     my $story_html = "site/$story_html_base";
@@ -202,7 +203,7 @@ sub create_story_page {
     append_file($story_html, "**$title**\n");
     append_file($story_html, "\t$date\n");
     append_file($story_html, "\t$location\n");
-    append_file($story_html, "\n![$description]($photo_filename)\n");
+    append_file($story_html, "\n![$description]($photo_file)\n");
 
     my $model = $$exif_info{'Model'};
     my $aperture = $$exif_info{'Aperture'};
@@ -215,9 +216,14 @@ sub create_story_page {
 
 # Create a base html filename for a story based on title, date, location.
 sub story_base_html {
-    my ($title, $date, $location) = @_;
+    my ($title, $date, $location, $photo_meta) = @_;
 
-    my $story_html_base = "$title-$date-$location.html";
+    # $photo_meta is a toml file with directory path, so it will always be unique during processing.
+    my $unique_identifier = dirname($photo_meta);
+    # get rid of slash / and dot
+    $unique_identifier  =~ s/\/|\./_/g;
+
+    my $story_html_base = "$unique_identifier-$title-$date-$location.html";
     # remove all whitespace
     $story_html_base =~ s/ +//g;
     return $story_html_base;
